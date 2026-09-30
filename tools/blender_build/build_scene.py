@@ -511,6 +511,7 @@ def preview_setup(prefab_center, lib_center, lib_size):
         cd = bpy.data.cameras.new(name)
         cd.type = "ORTHO"
         cd.ortho_scale = scale
+        cd.sensor_fit = "HORIZONTAL"      # ortho_scale = visible width regardless of aspect
         cd.clip_end = 500
         co = bpy.data.objects.new(name, cd)
         rot = Matrix.Rotation(math.radians(rz), 4, "Z") @ Matrix.Rotation(math.radians(rx), 4, "X")
@@ -573,8 +574,8 @@ def main():
     build_pantry((ox + 7 * U, oy, 0), pcoll)
     hide_helpers()
     prefab_center = (ox + 5.4, oy + 3.2, 0.9)
-    lib_center = (-lib_w / 2, lib_d / 2 - 0.6, GROUND)
-    c1, c2 = preview_setup(prefab_center, lib_center, lib_w * 1.06)
+    lib_center = (-lib_w / 2 + 1.3, lib_d / 2 - 0.6, GROUND)   # +1.3: category titles sit at world +X
+    c1, c2 = preview_setup(prefab_center, lib_center, lib_w + 3.6)
     bpy.context.scene.camera = c1
     bpy.ops.file.make_paths_relative()
     bpy.ops.wm.save_as_mainfile(filepath=BLEND, compress=True)
@@ -582,7 +583,7 @@ def main():
     if DO_RENDER:
         os.makedirs(PREVIEW_DIR, exist_ok=True)
         render(c1, os.path.join(PREVIEW_DIR, "prefab_kitchen_pantry.png"), (1800, 1200), 96)
-        aspect = min(1.6, max(0.6, (lib_d * 0.8) / lib_w))
+        aspect = min(1.8, max(0.6, (lib_d * 0.85 + 1.5) / (lib_w + 3.6)))
         render(c2, os.path.join(PREVIEW_DIR, "asset_library.png"), (2000, int(2000 * aspect)), 48)
 
 
