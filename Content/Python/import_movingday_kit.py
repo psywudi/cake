@@ -1,7 +1,7 @@
 """
 MovingDay kit importer (Unreal Engine 5, Python Editor Script Plugin).
 
-Imports SourceArt/MovingDay (FBX + PNG) into /Game/MovingDay/Art and wires PBR materials:
+Imports the kit (FBX + PNG; auto-detects SourceArt/MovingDay or Desktop/754) into /Game/MovingDay/Art and wires PBR materials:
 
   /Game/MovingDay/Art/Textures/                 T_<Name>_BaseColor / _Normal / _ORM
   /Game/MovingDay/Art/Materials/                M_MovingDay_Master, M_MovingDay_Glass, MI_<Name>
@@ -17,8 +17,35 @@ import re
 
 import unreal
 
-SOURCE_DIR = os.path.join(unreal.Paths.project_dir(), "SourceArt", "MovingDay")
-ART = "/Game/MovingDay/Art"
+# Folder that contains FBX/ and Textures/. Leave empty to auto-detect, or set it explicitly, e.g.
+# SOURCE_OVERRIDE = r"C:\Users\me\Desktop\754\CozyKitchen_Kit"
+SOURCE_OVERRIDE = r""
+
+
+def _find_source():
+    def ok(d):
+        return os.path.isdir(os.path.join(d, "FBX")) and os.path.isdir(os.path.join(d, "Textures"))
+
+    home = os.path.expanduser("~")
+    roots = [os.environ.get("MOVINGDAY_SOURCE", ""), SOURCE_OVERRIDE,
+             os.path.join(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir()),
+                          "SourceArt", "MovingDay")]
+    for desk in ("Desktop", "桌面", os.path.join("OneDrive", "Desktop"), os.path.join("OneDrive", "桌面")):
+        roots.append(os.path.join(home, desk, "754"))
+    for r in roots:
+        if not r or not os.path.isdir(r):
+            continue
+        if ok(r):
+            return r
+        for sub in sorted(os.listdir(r)):           # e.g. 754/CozyKitchen_Kit
+            d = os.path.join(r, sub)
+            if os.path.isdir(d) and ok(d):
+                return d
+    return ""
+
+
+SOURCE_DIR = _find_source()
+ART ="/Game/MovingDay/Art"
 TEX_PATH = ART + "/Textures"
 MAT_PATH = ART + "/Materials"
 
@@ -241,8 +268,10 @@ def import_meshes(mis, names):
 
 
 def run():
-    if not os.path.isdir(SOURCE_DIR):
-        raise RuntimeError(f"SourceArt not found: {SOURCE_DIR} (copy SourceArt/ next to the .uproject)")
+    if not SOURCE_DIR:
+        raise RuntimeError("[MovingDay] FBX/Textures folder not found. Set SOURCE_OVERRIDE at the top of "
+                           "import_movingday_kit.py to the folder that contains FBX and Textures.")
+    log(f"source: {SOURCE_DIR}")
     names = material_names()
     with unreal.ScopedSlowTask(4, "Importing MovingDay kit") as task:
         task.make_dialog(True)
